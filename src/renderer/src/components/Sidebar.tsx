@@ -21,6 +21,7 @@ import {
   ChevronDown,
   ChevronRight
 } from 'lucide-react'
+import SearchBar from './SearchBar'
 import scribeLogo from '../../../../images/scribe-alt.png'
 import { SimpleDatabaseService } from '../lib/simpleDatabase'
 import { Note, Folder as FolderType, Tag as TagType } from '../lib/models'
@@ -36,6 +37,12 @@ interface SidebarProps {
   onToggleDarkMode: () => void
   onCreateNote: () => void
   onFilterChange: (filter: string) => void
+  onShowTagManager: () => void
+  onShowFolderManager: () => void
+  availableTags: string[]
+  availableFolders: any[]
+  onSearchFilterChange?: (filters: any) => void
+  onTagClick?: (tagName: string) => void
 }
 
 export default function Sidebar({
@@ -48,7 +55,13 @@ export default function Sidebar({
   onSearchChange,
   onToggleDarkMode,
   onCreateNote,
-  onFilterChange
+  onFilterChange,
+  onShowTagManager,
+  onShowFolderManager,
+  availableTags,
+  availableFolders,
+  onSearchFilterChange,
+  onTagClick
 }: SidebarProps) {
   const [folders, setFolders] = useState<FolderType[]>([])
   const [tags, setTags] = useState<TagType[]>([])
@@ -84,17 +97,13 @@ export default function Sidebar({
 
     switch (activeFilter) {
       case 'pinned':
-        return dbService.getNotes({ pinned: true })
+        return notes.filter(note => note.pinned)
       case 'recent':
         return notes.slice(0, 10) // Last 10 notes
       case 'all':
       default:
         return notes
     }
-
-    // Filter by folder if needed
-    // This would be implemented based on the selected folder
-    return notes
   }
 
   const filteredNotes = getFilteredNotes()
@@ -123,6 +132,20 @@ export default function Sidebar({
             >
               <Filter className="w-4 h-4 text-fluent-gray-600 dark:text-fluent-gray-300" />
             </button>
+            <button 
+              onClick={onShowTagManager}
+              className="p-2 hover:bg-fluent-gray-200 dark:hover:bg-fluent-gray-700 rounded-md transition-colors"
+              title="Manage Tags"
+            >
+              <Tag className="w-4 h-4 text-fluent-gray-600 dark:text-fluent-gray-300" />
+            </button>
+            <button 
+              onClick={onShowFolderManager}
+              className="p-2 hover:bg-fluent-gray-200 dark:hover:bg-fluent-gray-700 rounded-md transition-colors"
+              title="Manage Folders"
+            >
+              <Folder className="w-4 h-4 text-fluent-gray-600 dark:text-fluent-gray-300" />
+            </button>
           </div>
         </div>
         
@@ -137,16 +160,14 @@ export default function Sidebar({
 
       {/* Search */}
       <div className="p-3 border-b border-fluent-gray-200 dark:border-fluent-gray-700">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-fluent-gray-400" />
-          <input
-            type="text"
-            placeholder="Search notes..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-white dark:bg-fluent-gray-700 border border-fluent-gray-200 dark:border-fluent-gray-600 rounded-md text-sm text-fluent-gray-800 dark:text-fluent-gray-100 placeholder-fluent-gray-400 focus:outline-none focus:ring-2 focus:ring-fluent-blue-500"
-          />
-        </div>
+        <SearchBar
+          query={searchQuery}
+          onQueryChange={onSearchChange}
+          onFilterChange={onSearchFilterChange || (() => {})}
+          availableTags={availableTags}
+          availableFolders={availableFolders}
+          isDarkMode={isDarkMode}
+        />
       </div>
 
       {/* Quick Filters */}
@@ -239,18 +260,20 @@ export default function Sidebar({
           </button>
         </div>
         <div className="flex flex-wrap gap-1">
-          {tags.slice(0, 8).map((tag) => (
+          {availableTags.slice(0, 8).map((tagName, index) => (
             <button
-              key={tag.id}
-              className="inline-flex items-center px-2 py-1 rounded text-xs bg-fluent-gray-200 dark:bg-fluent-gray-700 text-fluent-gray-700 dark:text-fluent-gray-300 hover:bg-fluent-gray-300 dark:hover:bg-fluent-gray-600 transition-colors"
+              key={index}
+              onClick={() => onTagClick?.(tagName)}
+              className="inline-flex items-center px-2 py-1 rounded text-xs bg-fluent-blue-100 dark:bg-fluent-blue-900/20 text-fluent-blue-700 dark:text-fluent-blue-300 hover:bg-fluent-blue-200 dark:hover:bg-fluent-blue-900/40 transition-colors cursor-pointer"
+              title={`Filter by tag: ${tagName}`}
             >
               <Tag className="w-3 h-3 mr-1" />
-              {tag.name}
+              {tagName}
             </button>
           ))}
-          {tags.length > 8 && (
+          {availableTags.length > 8 && (
             <span className="text-xs text-fluent-gray-500 dark:text-fluent-gray-400">
-              +{tags.length - 8} more
+              +{availableTags.length - 8} more
             </span>
           )}
         </div>

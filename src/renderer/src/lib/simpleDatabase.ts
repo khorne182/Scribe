@@ -1,8 +1,8 @@
 /**
- * Simple Database Service for Scribe (Temporary)
+ * Simple Database Service for Scribe (Restored)
  * 
- * This is a simplified version that uses localStorage instead of SQLite
- * to avoid renderer process issues. Will be replaced with proper SQLite in Phase 4.
+ * This is the working version that uses localStorage.
+ * Restored to fix the broken app after FileSystemService implementation.
  */
 
 import { 
@@ -159,13 +159,30 @@ export class SimpleDatabaseService {
   getTags(): Tag[] {
     const notes = this.getNotesFromStorage()
     const allTags = notes.flatMap(note => note.tags)
+    
+    // Count tag usage
+    const tagCounts = allTags.reduce((acc, tag) => {
+      acc[tag] = (acc[tag] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+    
+    // Get unique tags with usage count
     const uniqueTags = [...new Set(allTags)]
     
-    return uniqueTags.map((tag, index) => ({
-      id: index + 1,
-      name: tag,
-      created_at: new Date().toISOString()
-    }))
+    return uniqueTags
+      .map((tag, index) => ({
+        id: index + 1,
+        name: tag,
+        created_at: new Date().toISOString(),
+        usageCount: tagCounts[tag] || 0
+      }))
+      .sort((a, b) => {
+        // Sort by usage count (descending), then by creation date (ascending)
+        if (a.usageCount !== b.usageCount) {
+          return b.usageCount - a.usageCount
+        }
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      })
   }
 
   createTag(name: string, color?: string): Tag {

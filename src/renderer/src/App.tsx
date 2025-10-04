@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react'
 import { SimpleDatabaseService } from './lib/simpleDatabase'
 import { Note, CreateNoteData, UpdateNoteData } from './lib/models'
 import Sidebar from './components/Sidebar'
-import NoteEditor from './components/NoteEditor'
+import SimpleRichEditor from './components/SimpleRichEditor'
+import TagManager from './components/TagManager'
+import FolderManager from './components/FolderManager'
+import SearchBar from './components/SearchBar'
 
 function App(): React.JSX.Element {
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -12,6 +15,13 @@ function App(): React.JSX.Element {
   const [dbService, setDbService] = useState<SimpleDatabaseService | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<string>('all')
+  
+  // Organization features state
+  const [showTagManager, setShowTagManager] = useState(false)
+  const [showFolderManager, setShowFolderManager] = useState(false)
+  const [searchFilters, setSearchFilters] = useState<any>({})
+  const [availableTags, setAvailableTags] = useState<string[]>([])
+  const [availableFolders, setAvailableFolders] = useState<any[]>([])
 
   // Initialize database on component mount
   useEffect(() => {
@@ -25,6 +35,12 @@ function App(): React.JSX.Element {
         const existingNotes = db.getNotes()
         console.log('Loaded notes:', existingNotes.length)
         setNotes(existingNotes)
+        
+        // Load tags and folders
+        const tags = db.getTags()
+        const folders = db.getFolders()
+        setAvailableTags(tags.map(tag => tag.name))
+        setAvailableFolders(folders)
         
         setIsLoading(false)
         console.log('Database initialized successfully')
@@ -48,17 +64,24 @@ function App(): React.JSX.Element {
   }, [dbService])
 
   const createNewNote = () => {
-    if (!dbService) return
+    console.log('createNewNote called')
+    if (!dbService) {
+      console.log('No dbService available')
+      return
+    }
 
     try {
+      console.log('Creating new note...')
       const newNote = dbService.createNote({
         title: 'Untitled Note',
         content: '',
         tags: [],
         pinned: false
       })
+      console.log('New note created:', newNote)
       setNotes([newNote, ...notes])
       setSelectedNote(newNote)
+      console.log('Note added to state')
     } catch (error) {
       console.error('Failed to create note:', error)
     }
@@ -95,6 +118,10 @@ function App(): React.JSX.Element {
       if (savedNote) {
         setNotes(notes.map(n => n.id === updatedNote.id ? savedNote : n))
         setSelectedNote(savedNote)
+        
+        // Update available tags when note tags change
+        const allTags = dbService.getTags()
+        setAvailableTags(allTags.map(tag => tag.name))
       }
     } catch (error) {
       console.error('Failed to update note:', error)
@@ -164,6 +191,140 @@ function App(): React.JSX.Element {
     }
   }
 
+  const handleNoteCopy = (note: Note) => {
+    if (!dbService) return
+
+    try {
+      const copiedNote = dbService.createNote({
+        title: `${note.title} (Copy)`,
+        content: note.content,
+        tags: [...note.tags],
+        pinned: false
+      })
+      setNotes([copiedNote, ...notes])
+    } catch (error) {
+      console.error('Failed to copy note:', error)
+    }
+  }
+
+  const handlePrint = () => {
+    if (selectedNote) {
+      // Phase 6: Implement print functionality
+      console.log('Print functionality - Phase 6')
+      window.print()
+    }
+  }
+
+  // Organization functions
+  const handleTagRename = (oldName: string, newName: string) => {
+    if (!dbService) return
+    
+    // Update all notes with the old tag
+    const updatedNotes = notes.map(note => ({
+      ...note,
+      tags: note.tags.map(tag => tag === oldName ? newName : tag)
+    }))
+    
+    // Update notes in database
+    updatedNotes.forEach(note => {
+      dbService.updateNote({
+        id: note.id,
+        tags: note.tags
+      })
+    })
+    
+    setNotes(updatedNotes)
+    
+    // Update available tags
+    setAvailableTags(prev => prev.map(tag => tag === oldName ? newName : tag))
+  }
+
+  const handleTagDelete = (tagName: string) => {
+    if (!dbService) return
+    
+    // Remove tag from all notes
+    const updatedNotes = notes.map(note => ({
+      ...note,
+      tags: note.tags.filter(tag => tag !== tagName)
+    }))
+    
+    // Update notes in database
+    updatedNotes.forEach(note => {
+      dbService.updateNote({
+        id: note.id,
+        tags: note.tags
+      })
+    })
+    
+    setNotes(updatedNotes)
+    
+    // Update available tags
+    setAvailableTags(prev => prev.filter(tag => tag !== tagName))
+  }
+
+  const handleFolderCreate = (name: string, color: string) => {
+    if (!dbService) return
+    
+    const newFolder = dbService.createFolder(name, color)
+    setAvailableFolders(prev => [...prev, newFolder])
+  }
+
+  const handleFolderRename = (id: number, newName: string) => {
+    setAvailableFolders(prev => 
+      prev.map(folder => 
+        folder.id === id ? { ...folder, name: newName } : folder
+      )
+    )
+  }
+
+  const handleFolderDelete = (id: number) => {
+    setAvailableFolders(prev => prev.filter(folder => folder.id !== id))
+  }
+
+  const handleSearchFilterChange = (filters: any) => {
+    setSearchFilters(filters)
+    
+    if (dbService) {
+      const filteredNotes = dbService.getNotes(filters)
+      setNotes(filteredNotes)
+    }
+  }
+
+  // Handle search query changes
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query)
+    
+    if (dbService) {
+      const currentFilters = {
+        query: query,
+        ...searchFilters
+      }
+      const filteredNotes = dbService.getNotes(currentFilters)
+      setNotes(filteredNotes)
+      console.log('Search query:', query, 'Filtered notes:', filteredNotes.length)
+    }
+  }
+
+  // Refresh available tags from database
+  const refreshAvailableTags = () => {
+    if (dbService) {
+      const tags = dbService.getTags()
+      const tagNames = tags.map(tag => tag.name)
+      setAvailableTags(tagNames)
+      console.log('Refreshed available tags (ranked by usage):', tagNames)
+    }
+  }
+
+  // Handle tag click for filtering
+  const handleTagClick = (tagName: string) => {
+    if (dbService) {
+      const filteredNotes = dbService.getNotes({ tags: [tagName] })
+      setNotes(filteredNotes)
+      setSearchQuery(`tag:${tagName}`)
+      console.log('Filtered by tag:', tagName, 'Notes:', filteredNotes.length)
+    }
+  }
+
   // Simple fallback if components fail to load
   if (isLoading) {
   return (
@@ -188,18 +349,50 @@ function App(): React.JSX.Element {
         searchQuery={searchQuery}
         isDarkMode={isDarkMode}
         onNoteSelect={handleNoteSelect}
-        onSearchChange={setSearchQuery}
+        onSearchChange={handleSearchChange}
         onToggleDarkMode={toggleDarkMode}
         onCreateNote={createNewNote}
         onFilterChange={handleFilterChange}
+        onShowTagManager={() => setShowTagManager(true)}
+        onShowFolderManager={() => setShowFolderManager(true)}
+        availableTags={availableTags}
+        availableFolders={availableFolders}
+        onSearchFilterChange={handleSearchFilterChange}
+        onTagClick={handleTagClick}
       />
       
-      <NoteEditor
+      <SimpleRichEditor
         note={selectedNote}
         onUpdate={handleNoteUpdate}
         onDelete={handleNoteDelete}
         onPin={handleNotePin}
+        onCopy={handleNoteCopy}
+        onCreate={createNewNote}
+        onSave={handleNoteUpdate}
+        onPrint={handlePrint}
+        availableTags={availableTags}
+        onTagsRefresh={refreshAvailableTags}
       />
+
+      {/* Organization Modals */}
+      {showTagManager && (
+        <TagManager
+          tags={availableTags}
+          onTagRename={handleTagRename}
+          onTagDelete={handleTagDelete}
+          onClose={() => setShowTagManager(false)}
+        />
+      )}
+
+      {showFolderManager && (
+        <FolderManager
+          folders={availableFolders}
+          onCreateFolder={handleFolderCreate}
+          onRenameFolder={handleFolderRename}
+          onDeleteFolder={handleFolderDelete}
+          onClose={() => setShowFolderManager(false)}
+        />
+      )}
     </div>
   )
 }

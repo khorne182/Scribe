@@ -30,6 +30,7 @@ export interface Tag {
   name: string
   color?: string
   created_at: string
+  usageCount?: number
 }
 
 export interface DatabaseConfig {

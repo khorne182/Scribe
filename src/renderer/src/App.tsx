@@ -6,6 +6,8 @@ import SimpleRichEditor from './components/SimpleRichEditor'
 import TagManager from './components/TagManager'
 import FolderManager from './components/FolderManager'
 import SearchBar from './components/SearchBar'
+// import ExportDialog from './components/ExportDialog'
+// import ImportDialog from './components/ImportDialog'
 
 function App(): React.JSX.Element {
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -22,6 +24,10 @@ function App(): React.JSX.Element {
   const [searchFilters, setSearchFilters] = useState<any>({})
   const [availableTags, setAvailableTags] = useState<string[]>([])
   const [availableFolders, setAvailableFolders] = useState<any[]>([])
+  
+  // Export/Import state
+  // const [showExportDialog, setShowExportDialog] = useState(false)
+  // const [showImportDialog, setShowImportDialog] = useState(false)
 
   // Initialize database on component mount
   useEffect(() => {
@@ -325,6 +331,36 @@ function App(): React.JSX.Element {
     }
   }
 
+  // Handle import notes
+  const handleImportNotes = (importedNotes: Note[]) => {
+    if (dbService) {
+      try {
+        // Add imported notes to database
+        importedNotes.forEach(noteData => {
+          const newNote = dbService.createNote({
+            title: noteData.title,
+            content: noteData.content,
+            tags: noteData.tags,
+            pinned: noteData.pinned || false,
+            folder_id: noteData.folder_id
+          })
+          console.log('Imported note:', newNote.title)
+        })
+
+        // Refresh notes list
+        const updatedNotes = dbService.getNotes()
+        setNotes(updatedNotes)
+        
+        // Refresh available tags
+        refreshAvailableTags()
+        
+        console.log(`Successfully imported ${importedNotes.length} notes`)
+      } catch (error) {
+        console.error('Failed to import notes:', error)
+      }
+    }
+  }
+
   // Simple fallback if components fail to load
   if (isLoading) {
   return (
@@ -359,6 +395,8 @@ function App(): React.JSX.Element {
         availableFolders={availableFolders}
         onSearchFilterChange={handleSearchFilterChange}
         onTagClick={handleTagClick}
+        // onShowExportDialog={() => setShowExportDialog(true)}
+        // onShowImportDialog={() => setShowImportDialog(true)}
       />
       
       <SimpleRichEditor
@@ -384,16 +422,33 @@ function App(): React.JSX.Element {
         />
       )}
 
-      {showFolderManager && (
-        <FolderManager
-          folders={availableFolders}
-          onCreateFolder={handleFolderCreate}
-          onRenameFolder={handleFolderRename}
-          onDeleteFolder={handleFolderDelete}
-          onClose={() => setShowFolderManager(false)}
-        />
-      )}
-    </div>
+              {showFolderManager && (
+                <FolderManager
+                  folders={availableFolders}
+                  onCreateFolder={handleFolderCreate}
+                  onRenameFolder={handleFolderRename}
+                  onDeleteFolder={handleFolderDelete}
+                  onClose={() => setShowFolderManager(false)}
+                />
+              )}
+
+              {/* Export/Import Dialogs */}
+              {/* {showExportDialog && (
+                <ExportDialog
+                  notes={selectedNote ? [selectedNote] : notes}
+                  isOpen={showExportDialog}
+                  onClose={() => setShowExportDialog(false)}
+                />
+              )}
+
+              {showImportDialog && (
+                <ImportDialog
+                  isOpen={showImportDialog}
+                  onClose={() => setShowImportDialog(false)}
+                  onImport={handleImportNotes}
+                />
+              )} */}
+            </div>
   )
 }
 

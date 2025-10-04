@@ -19,7 +19,9 @@ import {
   Trash2,
   Filter,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Download,
+  Upload
 } from 'lucide-react'
 import SearchBar from './SearchBar'
 import scribeLogo from '../../../../images/scribe-alt.png'
@@ -43,6 +45,8 @@ interface SidebarProps {
   availableFolders: any[]
   onSearchFilterChange?: (filters: any) => void
   onTagClick?: (tagName: string) => void
+  onShowExportDialog?: () => void
+  onShowImportDialog?: () => void
 }
 
 export default function Sidebar({
@@ -146,6 +150,20 @@ export default function Sidebar({
             >
               <Folder className="w-4 h-4 text-fluent-gray-600 dark:text-fluent-gray-300" />
             </button>
+            {/* <button 
+              onClick={onShowExportDialog}
+              className="p-2 hover:bg-fluent-gray-200 dark:hover:bg-fluent-gray-700 rounded-md transition-colors"
+              title="Export Notes"
+            >
+              <Download className="w-4 h-4 text-fluent-gray-600 dark:text-fluent-gray-300" />
+            </button>
+            <button 
+              onClick={onShowImportDialog}
+              className="p-2 hover:bg-fluent-gray-200 dark:hover:bg-fluent-gray-700 rounded-md transition-colors"
+              title="Import Notes"
+            >
+              <Upload className="w-4 h-4 text-fluent-gray-600 dark:text-fluent-gray-300" />
+            </button> */}
           </div>
         </div>
         

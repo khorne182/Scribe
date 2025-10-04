@@ -14,6 +14,8 @@ import {
   Save,
   Printer,
   Trash2,
+  Download,
+  Upload,
   Bold,
   Italic,
   Underline,
@@ -31,6 +33,7 @@ import {
 } from 'lucide-react'
 import { Note } from '../lib/models'
 import TagInput from './TagInput'
+import { SimpleExportService } from '../lib/simpleExportService'
 
 interface SimpleRichEditorProps {
   note: Note | null
@@ -295,6 +298,43 @@ export default function SimpleRichEditor({
     }
   }
 
+  // Export note in markdown or text format
+  const handleExport = () => {
+    if (note) {
+      const updatedNote = {
+        ...note,
+        title,
+        content,
+        updated_at: new Date().toISOString()
+      }
+      
+      try {
+        // Export as Markdown by default
+        SimpleExportService.exportNote(updatedNote, {
+          format: 'markdown',
+          includeMetadata: true,
+          includeTags: true,
+          includeTimestamps: true
+        })
+        console.log('Note exported as Markdown successfully')
+      } catch (error) {
+        console.error('Markdown export failed, trying text export:', error)
+        try {
+          // Fallback to text export
+          SimpleExportService.exportNote(updatedNote, {
+            format: 'txt',
+            includeMetadata: true,
+            includeTags: true,
+            includeTimestamps: true
+          })
+          console.log('Note exported as text successfully')
+        } catch (textError) {
+          console.error('Text export also failed:', textError)
+        }
+      }
+    }
+  }
+
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -379,6 +419,15 @@ export default function SimpleRichEditor({
               title="Save note (Ctrl+S)"
             >
               <Save className="w-4 h-4" />
+            </button>
+
+            {/* Export */}
+            <button
+              onClick={handleExport}
+              className="p-2 rounded hover:bg-fluent-blue-100 dark:hover:bg-fluent-blue-900/20 transition-colors text-fluent-blue-600"
+              title="Export note"
+            >
+              <Download className="w-4 h-4" />
             </button>
 
             {/* Print */}
